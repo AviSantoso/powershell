@@ -14,19 +14,31 @@ function Protect-String {
         [Parameter(Mandatory = $true)]
         [string]$PlainText,
         [Parameter(Mandatory = $true)]
-        [string]$SecretKey
+        [string]$SecretKey,
+        [Parameter(Mandatory = $true)]
+        [string] $Salt
     )
 
+    <#NOTE: This function is weaker because we don't accept a salt value. This however, means that
+    we can ensure that this function is deterministic without using a salt value.
+    #>
+
+    $iterations = 10000
     $blockSize = 128
     $keySize = 256
+
+    $saltBytes = [System.Text.Encoding]::UTF8.GetBytes($Salt)
+
+    $pbkdf2 = New-Object System.Security.Cryptography.Rfc2898DeriveBytes($PlainText, $saltBytes)
+    $pbkdf2.IterationCount = $iterations
+    $key = $pbkdf2.GetBytes($keySize / 8)
+    $iv = $pbkdf2.GetBytes($blockSize / 8)
 
     $aes = [System.Security.Cryptography.Aes]::Create()
     $aes.BlockSize = $blockSize;
     $aes.KeySize = $keySize;
-    $aes.Key = [System.Text.Encoding]::UTF8.GetBytes($SecretKey)
-    $aes.GenerateIV();
-
-    $iv = $aes.IV;
+    $aes.Key = $key;
+    $aes.IV = $iv;
 
     $plainBytes = [System.Text.Encoding]::UTF8.GetBytes($PlainText);
     $encryptedBytes = $aes.EncryptCbc($plainBytes, $iv);
@@ -45,15 +57,14 @@ Describe "Protect-String" {
             # Arrange
             $plainText = "Hello World!"
             $secretKey = "mySecretKey123"
-            $expectedResult = "oW6X2/fSTJc="
+            $salt = "mySuperSecretSalt"
+            $expectedResult = "OIuPCWYLoC/6U+3x/bS4ZA=="
 
             # Act
-            $result = Protect-String -PlainText $plainText -SecretKey $secretKey
+            $result = Protect-String -PlainText $plainText -SecretKey $secretKey -Salt $salt
 
             # Assert
             $result | Should -Be $expectedResult
         }
     }
 }
-
-Invoke-Pester
