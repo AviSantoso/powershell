@@ -1,3 +1,5 @@
+Import-Module Pester
+
 function Remove-FilesByExtension {
     <#
     Write a function named Remove-FilesByExtension that takes in two parameters: $Path and $Extension.
@@ -26,7 +28,7 @@ function Remove-FilesByExtension {
         Write-Error "Extension is empty."
     }
 
-    $toRemove = Get-ChildItem $Path -Recurse -Include "*.$Extension"
+    $toRemove = Get-ChildItem $Path -File -Recurse -Include "*.$Extension"
 
     Write-Host "Found $($toRemove.Length) items to remove"
     Write-Host $toRemove
@@ -37,17 +39,13 @@ function Remove-FilesByExtension {
     }
 }
 
-
-function Test-FilesByExtension {
-
-}
+$testDir = "TestFiles"
 
 Describe "Remove-FilesByExtension" {
-    $testDir = "TestFiles"
 
     BeforeAll {
         if (!(Test-Path $testDir)) {
-            New-Item $testDir -Force -ItemType "Folder"
+            New-Item $testDir -Force -ItemType "Directory"
         }
     }
 
@@ -64,11 +62,11 @@ Describe "Remove-FilesByExtension" {
             New-Item -ItemType "File" -Path $file -Force
         }
     
-        $expected = Get-ChildItem -Path $testDir | Select-Object -ExpandProperty Name | Where-Object { $_.EndsWith(".csv") }
+        $expected = Get-ChildItem -Path $testDir -File | Select-Object -ExpandProperty Name | Where-Object { $_.EndsWith(".csv") }
     
         Remove-FilesByExtension -Extension "txt" -Path $testDir
     
-        $actual = Get-ChildItem -Path $directory | Select-Object -ExpandProperty Name
+        $actual = Get-ChildItem -Path $testDir -File | Select-Object -ExpandProperty Name
     
         $actual | Should -Be $expected
     
